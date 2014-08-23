@@ -1,0 +1,96 @@
+---
+output: html_document
+---
+### Practical Machine Learning - Course Project
+
+#### Background:
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website [here](http://groupware.les.inf.puc-rio.br/har). (see the section on the Weight Lifting Exercise Dataset). 
+
+#### Data
+
+The training data for this project are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv).
+
+The test data are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv).
+
+To look at the source of the data, click [here](http://groupware.les.inf.puc-rio.br/har). 
+
+#### Aim
+
+The aim of this project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set.  
+
+#### Data loading and preprocessing:
+
+The two files are downloaded and are stored into dataframes. It has a lot of incomplete data with NAs. Therefore to make the analysis less cumbersome, all the NAs and blanks are removed from the dataframe.
+
+```{r download, echo=TRUE}
+
+library(caret)
+library(randomForest)
+
+training <- read.csv(file = file.choose()) ##Select the pml-training file
+testing <- read.csv(file = file.choose()) ##Select the pml-testing file
+
+training[training == ""]<-NA
+training<-training[,which(as.numeric(colSums(is.na(training)))==0)]
+testing[testing == ""]<-NA
+testing<-testing[,which(as.numeric(colSums(is.na(testing)))==0)]
+
+```
+
+The documentation of the dataset also shows that the first 7 columns do not add value to the prediction model that we will be building. Hence we take it off.
+
+```{r preprocess, echo=TRUE}
+
+training<-training[,-c(1:7)]
+testing<-testing[,-c(1:7)]
+
+```
+
+#### Data loading and preprocessing
+
+We split the training set further into a training set and a cross validation set. The dimensions of the training and the cross validation set is also printed.
+
+```{r partition, echo=TRUE}
+set.seed(1300)
+trainindex <- createDataPartition(y=training$classe, p=0.80, list=FALSE)
+data_train <- training[trainindex,]
+data_val <- training[-trainindex,]
+dim(data_train); dim(data_val)
+
+```
+
+#### Training and cross validation:
+
+The model used here for prediction is the 'random forest' model.
+
+```{r model, echo=TRUE}
+
+model <- randomForest(classe ~ ., data = data_train)
+model
+
+```
+
+From the model above, we see that the Out Of Bounds (OOB) estimate of error rate is less than 0.5% which is very good. Also the class errors from the confusion matrix is also very low.
+
+```{r cv, echo=TRUE}
+predict_cv <- predict(model,data_val)
+con_mat_cv <- confusionMatrix(predict_cv,data_val$classe)
+con_mat_cv
+
+```
+
+The above output gives an accuracy of over 99% with a kappa value of 0.9952. Hence this models seems to be performing well.
+
+The **out of sample error is almost 0** (calculated as 1 - accuracy) which also means that the model will do a good job at predicting the testing set.
+
+#### Testing the model:
+
+Finally this model is used to test the data data in the testing set. And the predicted values are printed.
+
+```{r predict, echo=TRUE}
+
+predict_test <- predict(model,testing)
+predict_test
+
+```
